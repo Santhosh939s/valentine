@@ -6,12 +6,12 @@ const http = require('http');
 const path = require('path');
 const { Server } = require('socket.io');
 
-const authRoutes = require('./routes/auth');
-const profileRoutes = require('./routes/profile');
-const matchRoutes = require('./routes/matches');
-const chatbotRoutes = require('./routes/chatbot');
-const messageRoutes = require('./routes/messages');
-const adminRoutes = require('./routes/admin');
+const authRoutes = require('../routes/auth');
+const profileRoutes = require('../routes/profile');
+const matchRoutes = require('../routes/matches');
+const chatbotRoutes = require('../routes/chatbot');
+const messageRoutes = require('../routes/messages');
+const adminRoutes = require('../routes/admin');
 
 const app = express();
 const server = http.createServer(app);
@@ -26,7 +26,7 @@ app.use(cors());
 app.use(express.json());
 
 // Serve static frontend files
-app.use(express.static(path.join(__dirname, 'frontend')));
+app.use(express.static(path.join(__dirname, '../frontend')));
 
 // Routes
 app.use('/api', authRoutes);
@@ -38,7 +38,7 @@ app.use('/api/admin', adminRoutes);
 
 // Wildcard route to serve index.html for unknown frontend routes
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'frontend', 'index.html'));
+    res.sendFile(path.join(__dirname, '../frontend', 'index.html'));
 });
 
 // Track online users for admin dashboard
