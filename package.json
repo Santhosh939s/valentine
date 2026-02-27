@@ -3,8 +3,7 @@
     "version": "1.0.0",
     "description": "HeartLink fullstack app",
     "scripts": {
-        "start": "node backend/server.js",
-        "install": "cd backend && npm install"
+        "start": "node server.js"
     },
     "dependencies": {
         "@google/genai": "^1.43.0",
