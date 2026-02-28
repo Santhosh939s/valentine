@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const { protect } = require('../middleware/authMiddleware');
 const UserMessage = require('../models/UserMessage');
 
@@ -39,8 +40,9 @@ router.put('/messages/read/:partnerId', protect, async (req, res) => {
 // Get total unread count and grouped by sender for the current user
 router.get('/messages/unread', protect, async (req, res) => {
     try {
+        const userId = new mongoose.Types.ObjectId(req.user.id);
         const unreadMessages = await UserMessage.find({
-            receiverId: req.user.id,
+            receiverId: userId,
             read: false
         });
 

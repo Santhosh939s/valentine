@@ -75,10 +75,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Fetch initial unread message counts
     try {
         const unreadData = await apiCall('/messages/unread');
-        unreadCounts.total = unreadData.totalUnread;
-        unreadCounts.bySender = unreadData.bySender;
-        updateMessageBadge();
-    } catch (e) { console.error("Could not fetch unread messages"); }
+        if (unreadData) {
+            unreadCounts.total = unreadData.totalUnread || 0;
+            unreadCounts.bySender = unreadData.bySender || {};
+            updateMessageBadge();
+        }
+    } catch (e) {
+        console.error("Could not fetch unread messages:", e);
+    }
 
     loadProfileHeader();
     initSocket();
@@ -109,20 +113,30 @@ async function apiCall(endpoint, method = 'GET', body = null) {
 
     try {
         const res = await fetch(`${API_URL}${endpoint}`, options);
-        if (!res.ok && res.status === 401) {
+
+        // Handle unauthorized
+        if (res.status === 401) {
             logout();
             return null;
         }
 
         const contentType = res.headers.get("content-type");
+        let data;
         if (contentType && contentType.includes("application/json")) {
-            return await res.json();
+            data = await res.json();
         } else {
-            const text = await res.text();
-            throw new Error(`Server returned non-JSON response: ${res.status} ${text.substring(0, 50)}`);
+            data = await res.text();
         }
+
+        // If response is not OK, throw error with data details
+        if (!res.ok) {
+            const errorMsg = typeof data === 'object' ? (data.message || JSON.stringify(data)) : data;
+            throw new Error(`API Error ${res.status}: ${errorMsg.substring(0, 100)}`);
+        }
+
+        return data;
     } catch (err) {
-        console.error(`API Call failed for ${endpoint}:`, err);
+        console.error(`Error in apiCall to ${endpoint}:`, err);
         throw err;
     }
 }
@@ -399,7 +413,7 @@ async function loadMessageContacts() {
 
         if (res.matches && res.matches.length > 0) {
             list.innerHTML = res.matches.map(m => {
-                const unread = unreadCounts.bySender[m.partnerId] || 0;
+                const unread = (unreadCounts.bySender && unreadCounts.bySender[m.partnerId]) || 0;
                 const badgeHtml = unread > 0 ? `<span class="badge" style="float: right;">${unread}</span>` : '';
                 return `
                 <div class="contact-item" onclick="openChat('${m.partnerId}', '${m.name}')">
