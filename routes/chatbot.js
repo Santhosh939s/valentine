@@ -19,14 +19,21 @@ router.post('/chatbot', protect, async (req, res) => {
         // Attempt to use Hugging Face for deep conversational AI
         if (hf) {
             try {
-                const response = await hf.chatCompletion({
-                    model: "Qwen/Qwen2.5-72B-Instruct",
-                    messages: [
-                        { role: "system", content: "You are HeartBot, an empathetic, supportive, and conversational AI assistant for a romantic dating app. Keep answers short (1-2 sentences). Gently suggest users ask you for a 'Telugu song' if they feel sad or romantic." },
-                        { role: "user", content: message }
-                    ],
-                    max_tokens: 100
-                });
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Hugging Face API timeout (Model is probably sleeping)')), 4000)
+                );
+
+                const response = await Promise.race([
+                    hf.chatCompletion({
+                        model: "Qwen/Qwen2.5-72B-Instruct",
+                        messages: [
+                            { role: "system", content: "You are HeartBot, an empathetic, supportive, and conversational AI assistant for a romantic dating app. Keep answers short (1-2 sentences). Gently suggest users ask you for a 'Telugu song' if they feel sad or romantic." },
+                            { role: "user", content: message }
+                        ],
+                        max_tokens: 100
+                    }),
+                    timeoutPromise
+                ]);
 
                 botReply = response.choices[0].message.content.trim();
 

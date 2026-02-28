@@ -46,7 +46,9 @@ let onlineUsersCount = 0;
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI, {
-    serverSelectionTimeoutMS: 5000, // Keep timeout short just in case
+    serverSelectionTimeoutMS: 5000, // Fail fast if cluster is unreachable
+    socketTimeoutMS: 45000,         // Close sockets after 45 seconds of inactivity
+    family: 4                       // Force IPv4
 }).then(() => console.log('MongoDB Connected'))
     .catch(err => console.error('MongoDB connection error:', err));
 
