@@ -46,8 +46,6 @@ let onlineUsersCount = 0;
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
     serverSelectionTimeoutMS: 5000, // Keep timeout short just in case
 }).then(() => console.log('MongoDB Connected'))
     .catch(err => console.error('MongoDB connection error:', err));
