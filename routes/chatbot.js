@@ -20,7 +20,7 @@ router.post('/chatbot', protect, async (req, res) => {
         if (hf) {
             try {
                 const response = await hf.chatCompletion({
-                    model: "mistralai/Mistral-7B-Instruct-v0.2",
+                    model: "Qwen/Qwen2.5-72B-Instruct",
                     messages: [
                         { role: "system", content: "You are HeartBot, an empathetic, supportive, and conversational AI assistant for a romantic dating app. Keep answers short (1-2 sentences). Gently suggest users ask you for a 'Telugu song' if they feel sad or romantic." },
                         { role: "user", content: message }
