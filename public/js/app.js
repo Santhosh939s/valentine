@@ -208,15 +208,13 @@ async function loadChatbot() {
 
     const input = document.getElementById('botInput');
     if (input) {
-        // Remove existing listener if any to avoid duplicates
-        input.replaceWith(input.cloneNode(true));
-        const newInput = document.getElementById('botInput');
-        newInput.addEventListener('keypress', function (e) {
+        // Remove existing listener to avoid duplicates. Using simple override since it's an ID
+        input.onkeypress = function (e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 sendBotMessage();
             }
-        });
+        };
     }
 }
 

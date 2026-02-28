@@ -123,11 +123,20 @@ router.get('/matches/mine', protect, async (req, res) => {
         }).populate('user1', 'name username profilePhoto').populate('user2', 'name username profilePhoto');
 
         const formatted = matches.map(m => {
+            // Protect against deleted users
+            if (!m.user1 || !m.user2) return null;
+
             const isUser1 = m.user1._id.toString() === req.user.id;
             const partner = isUser1 ? m.user2 : m.user1;
 
-            return { matchId: m._id, partnerId: partner._id, name: partner.name, username: partner.username, profilePhoto: partner.profilePhoto };
-        });
+            return {
+                matchId: m._id,
+                partnerId: partner._id,
+                name: partner.name,
+                username: partner.username,
+                profilePhoto: partner.profilePhoto
+            };
+        }).filter(m => m !== null);
 
         res.json({ matches: formatted });
     } catch (error) {
