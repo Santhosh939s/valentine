@@ -107,9 +107,24 @@ async function apiCall(endpoint, method = 'GET', body = null) {
     };
     if (body) options.body = JSON.stringify(body);
 
-    const res = await fetch(`${API_URL}${endpoint}`, options);
-    if (!res.ok && res.status === 401) logout();
-    return res.json();
+    try {
+        const res = await fetch(`${API_URL}${endpoint}`, options);
+        if (!res.ok && res.status === 401) {
+            logout();
+            return null;
+        }
+
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+            return await res.json();
+        } else {
+            const text = await res.text();
+            throw new Error(`Server returned non-JSON response: ${res.status} ${text.substring(0, 50)}`);
+        }
+    } catch (err) {
+        console.error(`API Call failed for ${endpoint}:`, err);
+        throw err;
+    }
 }
 
 // UI Navigation
@@ -193,28 +208,35 @@ async function loadProfileForm() {
 
 // Chatbot Logic
 async function loadChatbot() {
-    const history = await apiCall('/chatbot/history');
-    const box = document.getElementById('botChatBox');
+    try {
+        const history = await apiCall('/chatbot/history');
+        const box = document.getElementById('botChatBox');
 
-    // Add history skipping the default first message if history exists
-    if (history.length > 0) box.innerHTML = '';
+        // Add history skipping the default first message if history exists
+        if (history && history.length > 0) box.innerHTML = '';
 
-    history.forEach(msg => {
-        box.innerHTML += `<div class="message user"><div class="bubble">${msg.message}</div></div>`;
-        box.innerHTML += `<div class="message bot"><div class="bubble">${msg.botReply}</div></div>`;
-    });
-    // Use an interval to ensure DOM is fully painted before scrolling
-    setTimeout(() => { if (box) box.scrollTop = box.scrollHeight; }, 100);
+        (history || []).forEach(msg => {
+            box.innerHTML += `<div class="message user"><div class="bubble">${msg.message}</div></div>`;
+            box.innerHTML += `<div class="message bot"><div class="bubble">${msg.botReply}</div></div>`;
+        });
 
-    const input = document.getElementById('botInput');
-    if (input) {
-        // Remove existing listener to avoid duplicates. Using simple override since it's an ID
-        input.onkeypress = function (e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                sendBotMessage();
-            }
-        };
+        // Use an interval to ensure DOM is fully painted before scrolling
+        setTimeout(() => { if (box) box.scrollTop = box.scrollHeight; }, 100);
+
+        const input = document.getElementById('botInput');
+        if (input) {
+            // Remove existing listener to avoid duplicates. Using simple override since it's an ID
+            input.onkeypress = function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    sendBotMessage();
+                }
+            };
+        }
+    } catch (e) {
+        console.error("Error loading chat history:", e);
+        const box = document.getElementById('botChatBox');
+        if (box) box.innerHTML += `<div class="message bot"><div class="bubble" style="color:red;">Error connecting to servers. Please try again.</div></div>`;
     }
 }
 
@@ -233,11 +255,20 @@ async function sendBotMessage() {
     box.innerHTML += `<div class="message bot ${typingId}"><div class="bubble"><i class="fa-solid fa-ellipsis fa-fade"></i></div></div>`;
     box.scrollTop = box.scrollHeight;
 
-    const res = await apiCall('/chatbot', 'POST', { message: text });
+    try {
+        const res = await apiCall('/chatbot', 'POST', { message: text });
 
-    // Replace typing
-    document.querySelector(`.${typingId}`).remove();
-    box.innerHTML += `<div class="message bot"><div class="bubble">${res.botReply}</div></div>`;
+        // Replace typing
+        document.querySelector(`.${typingId}`).remove();
+        if (res && res.botReply) {
+            box.innerHTML += `<div class="message bot"><div class="bubble">${res.botReply}</div></div>`;
+        } else {
+            throw new Error("Empty response");
+        }
+    } catch (e) {
+        document.querySelector(`.${typingId}`).remove();
+        box.innerHTML += `<div class="message bot"><div class="bubble" style="color:red;">Connection error. The network may be sleeping.</div></div>`;
+    }
     box.scrollTop = box.scrollHeight;
 }
 
@@ -342,22 +373,27 @@ async function respondReq(requestId, status) {
 let contactsCache = [];
 
 async function loadMessageContacts() {
-    const res = await apiCall('/matches/mine');
     const list = document.getElementById('matchList');
+    try {
+        const res = await apiCall('/matches/mine');
 
-    if (res.matches && res.matches.length > 0) {
-        list.innerHTML = res.matches.map(m => {
-            const unread = unreadCounts.bySender[m.partnerId] || 0;
-            const badgeHtml = unread > 0 ? `<span class="badge" style="float: right;">${unread}</span>` : '';
-            return `
-            <div class="contact-item" onclick="openChat('${m.partnerId}', '${m.name}')">
-                <strong><i class="fa-solid fa-heart glow-text"></i> ${m.name}</strong>
-                ${badgeHtml}
-            </div>
-            `;
-        }).join('');
-    } else {
-        list.innerHTML = `<p class="text-center w-100">No active matches yet.</p>`;
+        if (res.matches && res.matches.length > 0) {
+            list.innerHTML = res.matches.map(m => {
+                const unread = unreadCounts.bySender[m.partnerId] || 0;
+                const badgeHtml = unread > 0 ? `<span class="badge" style="float: right;">${unread}</span>` : '';
+                return `
+                <div class="contact-item" onclick="openChat('${m.partnerId}', '${m.name}')">
+                    <strong><i class="fa-solid fa-heart glow-text"></i> ${m.name}</strong>
+                    ${badgeHtml}
+                </div>
+                `;
+            }).join('');
+        } else {
+            list.innerHTML = `<p class="text-center w-100">No active matches yet.</p>`;
+        }
+    } catch (e) {
+        console.error("Error loading contacts:", e);
+        list.innerHTML = `<p class="text-center w-100 text-muted">Error loading matches. Please refresh.</p>`;
     }
 }
 
