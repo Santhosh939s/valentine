@@ -98,17 +98,23 @@ router.post('/request/respond', protect, async (req, res) => {
         await request.save();
 
         if (status === 'accepted') {
+            const senderId = new mongoose.Types.ObjectId(request.senderId);
+            const receiverId = new mongoose.Types.ObjectId(request.receiverId);
+
             const existingMatch = await Match.findOne({
                 $or: [
-                    { user1: request.senderId, user2: request.receiverId },
-                    { user1: request.receiverId, user2: request.senderId }
+                    { user1: senderId, user2: receiverId },
+                    { user1: receiverId, user2: senderId }
                 ]
             });
             if (!existingMatch) {
+                console.log(`Creating match between ${senderId} and ${receiverId}`);
                 await Match.create({
-                    user1: request.senderId,
-                    user2: request.receiverId
+                    user1: senderId,
+                    user2: receiverId
                 });
+            } else {
+                console.log(`Match already exists between ${senderId} and ${receiverId}`);
             }
         }
 
@@ -133,18 +139,28 @@ router.get('/request', protect, async (req, res) => {
     }
 });
 
+const mongoose = require('mongoose');
+
 // Get user's matches
 router.get('/matches/mine', protect, async (req, res) => {
     try {
+        const userId = new mongoose.Types.ObjectId(req.user.id);
+        console.log(`Fetching matches for user ${userId}`);
+
         const matches = await Match.find({
-            $or: [{ user1: req.user.id }, { user2: req.user.id }]
+            $or: [{ user1: userId }, { user2: userId }]
         }).populate('user1', 'name username profilePhoto').populate('user2', 'name username profilePhoto');
+
+        console.log(`Found ${matches.length} matches for ${userId}`);
 
         const formatted = matches.map(m => {
             // Protect against deleted users
-            if (!m.user1 || !m.user2) return null;
+            if (!m.user1 || !m.user2) {
+                console.log(`Skipping match ${m._id} due to missing user data`);
+                return null;
+            }
 
-            const isUser1 = m.user1._id.toString() === req.user.id;
+            const isUser1 = m.user1._id.toString() === userId.toString();
             const partner = isUser1 ? m.user2 : m.user1;
 
             return {
@@ -158,6 +174,7 @@ router.get('/matches/mine', protect, async (req, res) => {
 
         res.json({ matches: formatted });
     } catch (error) {
+        console.error('Error fetching matches:', error.message);
         res.status(500).json({ message: error.message });
     }
 });

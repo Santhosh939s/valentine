@@ -395,6 +395,7 @@ async function loadMessageContacts() {
     const list = document.getElementById('matchList');
     try {
         const res = await apiCall('/matches/mine');
+        console.log("Fetch Mine Matches Response:", res);
 
         if (res.matches && res.matches.length > 0) {
             list.innerHTML = res.matches.map(m => {
