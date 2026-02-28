@@ -32,7 +32,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 app.use('/api', authRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api', matchRoutes);
-app.use('/api/chatbot', chatbotRoutes);
+app.use('/api', chatbotRoutes); // Fixed routing path
 app.use('/api', messageRoutes);
 app.use('/api/admin', adminRoutes);
 
@@ -46,9 +46,7 @@ let onlineUsersCount = 0;
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI, {
-    serverSelectionTimeoutMS: 5000, // Fail fast if cluster is unreachable
-    socketTimeoutMS: 45000,         // Close sockets after 45 seconds of inactivity
-    family: 4                       // Force IPv4
+    serverSelectionTimeoutMS: 5000 // Fail fast if cluster is unreachable, standard config
 }).then(() => console.log('MongoDB Connected'))
     .catch(err => console.error('MongoDB connection error:', err));
 
