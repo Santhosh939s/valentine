@@ -6,6 +6,7 @@ let token = localStorage.getItem('heartlink_token');
 let user = JSON.parse(localStorage.getItem('heartlink_user'));
 let socket = null;
 let currentMatchId = null;
+let unreadCounts = { total: 0, bySender: {} };
 
 // Ensure auth
 if (!token) {
@@ -26,6 +27,22 @@ const initSocket = () => {
     socket.on('message', (data) => {
         if (data.senderId === currentMatchId || data.senderId === user.id) {
             appendPrivateMessage(data.senderId === user.id, decryptMessage(data.encryptedMessage));
+            // Automatically mark as read if the chat is currently open
+            if (data.senderId === currentMatchId) {
+                apiCall(`/messages/read/${currentMatchId}`, 'PUT');
+            }
+        } else {
+            // Message from someone else while we aren't viewing their chat
+            if (!unreadCounts.bySender[data.senderId]) unreadCounts.bySender[data.senderId] = 0;
+            unreadCounts.bySender[data.senderId]++;
+            unreadCounts.total++;
+            updateMessageBadge();
+
+            // If we are currently on the messages tab, re-render the contact list to show the new badge
+            if (document.getElementById('tpl-messages').classList.contains('active') ||
+                document.querySelector('.menu-item[onclick*="messages"]').classList.contains('active')) {
+                loadMessageContacts();
+            }
         }
     });
 
@@ -47,7 +64,7 @@ const logout = () => {
 };
 
 // Initial Setup
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('userName').innerText = user.name;
 
     // Show admin options if admin
@@ -55,10 +72,30 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'flex');
     }
 
+    // Fetch initial unread message counts
+    try {
+        const unreadData = await apiCall('/messages/unread');
+        unreadCounts.total = unreadData.totalUnread;
+        unreadCounts.bySender = unreadData.bySender;
+        updateMessageBadge();
+    } catch (e) { console.error("Could not fetch unread messages"); }
+
     loadProfileHeader();
     initSocket();
     loadView('chatbot', document.querySelector('.menu-item.active'));
 });
+
+function updateMessageBadge() {
+    const badge = document.getElementById('msgBadge');
+    if (badge) {
+        if (unreadCounts.total > 0) {
+            badge.innerText = unreadCounts.total;
+            badge.style.display = 'inline-block';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+}
 
 async function apiCall(endpoint, method = 'GET', body = null) {
     const options = {
@@ -311,11 +348,16 @@ async function loadMessageContacts() {
     const list = document.getElementById('matchList');
 
     if (res.matches && res.matches.length > 0) {
-        list.innerHTML = res.matches.map(m => `
+        list.innerHTML = res.matches.map(m => {
+            const unread = unreadCounts.bySender[m.partnerId] || 0;
+            const badgeHtml = unread > 0 ? `<span class="badge" style="float: right;">${unread}</span>` : '';
+            return `
             <div class="contact-item" onclick="openChat('${m.partnerId}', '${m.name}')">
                 <strong><i class="fa-solid fa-heart glow-text"></i> ${m.name}</strong>
+                ${badgeHtml}
             </div>
-        `).join('');
+            `;
+        }).join('');
     } else {
         list.innerHTML = `<p class="text-center w-100">No active matches yet.</p>`;
     }
@@ -330,6 +372,21 @@ async function openChat(partnerId, partnerName) {
     document.getElementById('chatPartnerName').innerText = partnerName;
 
     socket.emit('joinRoom', { userId: user.id, matchId: partnerId });
+
+    // Mark messages from this partner as read
+    if (unreadCounts.bySender[partnerId] > 0) {
+        unreadCounts.total -= unreadCounts.bySender[partnerId];
+        delete unreadCounts.bySender[partnerId];
+        updateMessageBadge();
+        // The red badge on the specific contact will automatically remove next time the list renders, 
+        // but we can manually remove it instantly for better UX:
+        const activeContact = event.currentTarget;
+        const badge = activeContact.querySelector('.badge');
+        if (badge) badge.remove();
+
+        // Notify backend
+        apiCall(`/messages/read/${partnerId}`, 'PUT');
+    }
 
     const messages = await apiCall(`/messages/${partnerId}`);
     const box = document.getElementById('privateChatBox');

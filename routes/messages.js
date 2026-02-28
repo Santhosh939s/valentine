@@ -22,7 +22,43 @@ router.get('/messages/:matchId', protect, async (req, res) => {
     }
 });
 
-// Save a new message (encrypted) via HTTP - Note: Real-time is handled via Socket.io
+// Mark messages from a specific partner as read
+router.put('/messages/read/:partnerId', protect, async (req, res) => {
+    try {
+        const { partnerId } = req.params;
+        await UserMessage.updateMany(
+            { senderId: partnerId, receiverId: req.user.id, read: false },
+            { $set: { read: true } }
+        );
+        res.json({ message: 'Messages marked as read' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// Get total unread count and grouped by sender for the current user
+router.get('/messages/unread', protect, async (req, res) => {
+    try {
+        const unreadMessages = await UserMessage.find({
+            receiverId: req.user.id,
+            read: false
+        });
+
+        const totalUnread = unreadMessages.length;
+        const bySender = {};
+
+        unreadMessages.forEach(msg => {
+            if (!bySender[msg.senderId]) bySender[msg.senderId] = 0;
+            bySender[msg.senderId]++;
+        });
+
+        res.json({ totalUnread, bySender });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// Get chat history between current user and a matched user
 router.post('/messages', protect, async (req, res) => {
     try {
         const { receiverId, encryptedMessage } = req.body;
