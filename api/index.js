@@ -37,7 +37,7 @@ app.use('/api', messageRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Wildcard route to serve index.html for unknown frontend routes
-app.get('/(.*)', (req, res) => {
+app.get(/.*/, (req, res) => {
     res.sendFile(path.join(__dirname, '../public', 'index.html'));
 });
 
