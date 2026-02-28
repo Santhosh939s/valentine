@@ -28,10 +28,10 @@ router.post('/chatbot', protect, async (req, res) => {
         if (ai) {
             try {
                 const response = await ai.models.generateContent({
-                    model: 'gemini-2.5-flash',
-                    contents: `Act as HeartBot, an emotional support AI for a romantic matching website called HeartLink.
-                    A user just said: "${message}". 
-                    Respond kindly, dynamically, and conversationally. If they ask for a song, especially a telugu song, append the exact string [SONG] at the very end of your reply. Limit response to 1-3 sentences.`
+                    model: 'gemini-2.0-flash',
+                    contents: `Act as HeartBot, an emotional support AI for a romantic matching website.
+                    User: "${message}". 
+                    Respond kindly and conversationally in 1-2 short sentences. If they ask for a song, append [SONG] at the end.`
                 });
                 botReply = response.text;
 

@@ -144,16 +144,20 @@
     padding: 12px 18px;
     border-radius: 20px;
     line-height: 1.4;
+    position: relative;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
 .bot .bubble {
-    background: rgba(138, 43, 226, 0.2);
+    background: rgba(40, 40, 40, 0.8);
     border-bottom-left-radius: 5px;
+    color: #e0e0e0;
 }
 
 .user .bubble {
     background: linear-gradient(135deg, var(--neon-pink), #8a2be2);
     border-bottom-right-radius: 5px;
+    color: white;
 }
 
 .chat-input-area {
