@@ -1,7 +1,7 @@
 const IS_LOCAL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 const API_URL = IS_LOCAL
     ? 'http://localhost:5001/api'
-    : 'https://your-vercel-backend-url.vercel.app/api';
+    : '/api';
 let token = localStorage.getItem('heartlink_token');
 let user = JSON.parse(localStorage.getItem('heartlink_user'));
 let socket = null;

@@ -1,6 +1,6 @@
 const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:5001/api'
-    : 'https://your-vercel-backend-url.vercel.app/api'; // The user will replace this when they deploy
+    : '/api'; // Use relative path for production
 
 document.getElementById('registerForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
