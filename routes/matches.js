@@ -12,7 +12,6 @@ router.get('/matches', protect, async (req, res) => {
         const currentUser = await User.findById(req.user.id);
         if (!currentUser) return res.status(404).json({ message: 'User not found' });
 
-        // Get IDs of people we already sent a request to, or who sent us a request, or who we already matched with
         const existingRequests = await Request.find({
             $or: [{ senderId: req.user.id }, { receiverId: req.user.id }]
         });
@@ -21,14 +20,8 @@ router.get('/matches', protect, async (req, res) => {
             $or: [{ user1: req.user.id }, { user2: req.user.id }]
         });
 
-        const excludedIds = [
-            req.user.id,
-            ...existingRequests.map(r => r.senderId.toString() === req.user.id ? r.receiverId.toString() : r.senderId.toString()),
-            ...existingMatches.map(m => m.user1.toString() === req.user.id ? m.user2.toString() : m.user1.toString())
-        ];
-
-        // Fetch remaining users
-        const users = await User.find({ _id: { $nin: excludedIds } }).select('-password');
+        // Fetch remaining users except self
+        const users = await User.find({ _id: { $ne: req.user.id } }).select('-password');
 
         let recommended = users.map(user => {
             let score = 0;
@@ -41,9 +34,26 @@ router.get('/matches', protect, async (req, res) => {
 
             const matchPercentage = Math.max(10, Math.min(score, 99));
 
+            let connectionStatus = 'none';
+            const isMatch = existingMatches.find(m => m.user1.toString() === user._id.toString() || m.user2.toString() === user._id.toString());
+
+            if (isMatch) {
+                connectionStatus = 'accepted';
+            } else {
+                const reqSent = existingRequests.find(r => r.senderId.toString() === req.user.id && r.receiverId.toString() === user._id.toString());
+                const reqReceived = existingRequests.find(r => r.receiverId.toString() === req.user.id && r.senderId.toString() === user._id.toString());
+
+                if (reqSent) {
+                    connectionStatus = reqSent.status === 'pending' ? 'pending_sent' : reqSent.status;
+                } else if (reqReceived) {
+                    connectionStatus = reqReceived.status === 'pending' ? 'pending_received' : reqReceived.status;
+                }
+            }
+
             return {
                 ...user.toObject(),
-                matchPercentage
+                matchPercentage,
+                connectionStatus
             };
         });
 
@@ -88,10 +98,18 @@ router.post('/request/respond', protect, async (req, res) => {
         await request.save();
 
         if (status === 'accepted') {
-            await Match.create({
-                user1: request.senderId,
-                user2: request.receiverId
+            const existingMatch = await Match.findOne({
+                $or: [
+                    { user1: request.senderId, user2: request.receiverId },
+                    { user1: request.receiverId, user2: request.senderId }
+                ]
             });
+            if (!existingMatch) {
+                await Match.create({
+                    user1: request.senderId,
+                    user2: request.receiverId
+                });
+            }
         }
 
         res.json({ message: `Request ${status}` });

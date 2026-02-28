@@ -290,7 +290,20 @@ function renderMatchesGrid(data) {
         return;
     }
 
-    grid.innerHTML = data.map(m => `
+    grid.innerHTML = data.map(m => {
+        let actionButton = `<button class="btn-primary" onclick="sendReq('${m._id || m.id}')" style="padding: 8px 15px; font-size:0.9rem;">Heart <i class="fa-solid fa-heart"></i></button>`;
+
+        if (m.connectionStatus === 'accepted') {
+            actionButton = `<button class="btn-outline" disabled style="color:var(--neon-pink); border-color:var(--neon-pink); padding: 8px 15px; font-size:0.9rem;">Matched <i class="fa-solid fa-heart"></i></button>`;
+        } else if (m.connectionStatus === 'pending_sent') {
+            actionButton = `<button class="btn-outline" disabled style="padding: 8px 15px; font-size:0.9rem; opacity:0.8;">Request Sent <i class="fa-solid fa-clock"></i></button>`;
+        } else if (m.connectionStatus === 'pending_received') {
+            actionButton = `<button class="btn-primary" onclick="loadView('requests', document.querySelectorAll('.menu-item')[2])" style="padding: 8px 15px; font-size:0.9rem;">Respond <i class="fa-solid fa-inbox"></i></button>`;
+        } else if (m.connectionStatus === 'rejected') {
+            actionButton = `<button class="btn-outline" disabled style="color:gray; border-color:gray; padding: 8px 15px; font-size:0.9rem;">Declined <i class="fa-solid fa-ban"></i></button>`;
+        }
+
+        return `
         <div class="profile-card">
             <img src="${m.profilePhoto === 'default-profile.png' ? 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + m.name : m.profilePhoto}">
             <h3>${m.name}, ${m.age}</h3>
@@ -299,12 +312,11 @@ function renderMatchesGrid(data) {
             <div class="match-pct">${m.matchPercentage || 10}% Match</div>
             
             <div style="margin-top: 15px; display:flex; gap:10px; justify-content:center;">
-                <button class="btn-primary" onclick="sendReq('${m._id || m.id}')" style="padding: 8px 15px; font-size:0.9rem;">
-                    Heart <i class="fa-solid fa-heart"></i>
-                </button>
+                ${actionButton}
             </div>
         </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 function filterMatches() {
@@ -330,8 +342,12 @@ function filterMatches() {
 async function sendReq(receiverId) {
     try {
         const res = await apiCall('/request', 'POST', { receiverId });
-        if (res.message) alert(res.message);
-        else alert('Match request sent!');
+        if (res && res.message) {
+            alert(res.message);
+        } else {
+            alert('Match request sent!');
+        }
+        loadMatches(); // Refresh grid to instantly update button to "Request Sent"
     } catch (e) { console.error(e); }
 }
 
