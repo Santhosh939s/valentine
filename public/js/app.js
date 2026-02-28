@@ -366,6 +366,9 @@ async function respondReq(requestId, status) {
         const res = await apiCall('/request/respond', 'POST', { requestId, status });
         alert(res.message);
         loadRequests();
+        if (status === 'accepted') {
+            loadMessageContacts(); // refresh private chats sidebar!
+        }
     } catch (e) { console.error(e); }
 }
 

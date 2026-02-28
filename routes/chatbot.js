@@ -20,7 +20,7 @@ router.post('/chatbot', protect, async (req, res) => {
         if (hf) {
             try {
                 const timeoutPromise = new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('Hugging Face API timeout (Model is probably sleeping)')), 4000)
+                    setTimeout(() => reject(new Error('Hugging Face API timeout (Model is probably sleeping)')), 15000)
                 );
 
                 const response = await Promise.race([
