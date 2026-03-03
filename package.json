@@ -5,6 +5,9 @@
     "scripts": {
         "start": "node api/index.js"
     },
+    "engines": {
+        "node": ">=18.0.0"
+    },
     "dependencies": {
         "@google/genai": "^1.43.0",
         "@huggingface/inference": "^4.13.14",

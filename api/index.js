@@ -28,6 +28,11 @@ app.use(express.json());
 // Serve static frontend files
 app.use(express.static(path.join(__dirname, '../public')));
 
+// Health check endpoint for keep-alive services
+app.get('/api/health', (req, res) => {
+    res.status(200).send('OK');
+});
+
 // Routes
 app.use('/api', authRoutes);
 app.use('/api/profile', profileRoutes);
